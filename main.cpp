@@ -5,7 +5,7 @@ int main() {
         for(int j = 1; j <= 1; j++) {
             std::cout << i * j << "\t";        
         }
-        std::cout << std::endl
+        std::cout << std::endl;
     }
     return 0;
 }

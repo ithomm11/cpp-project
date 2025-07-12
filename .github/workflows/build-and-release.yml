@@ -16,8 +16,6 @@ jobs:
     runs-on: windows-2022
     steps:
       - name: Checkout repository
-        # Мы делаем fetch-depth: 0, чтобы получить всю историю тегов,
-        # это нужно для их удаления и создания.
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
@@ -36,47 +34,41 @@ jobs:
 
   release:
     needs: build
-    # Запускаем и при пуше в main, и при создании тега v*
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-2022
 
     steps:
+      # ШАГ 1: Сначала готовим репозиторий для работы с тегами
+      - name: Checkout repository for tagging
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # ШАГ 2: Выполняем все операции с Git
+      - name: Update 'latest' tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git push origin --delete latest || true
+          git tag -d latest || true
+          git tag latest
+          git push origin latest
+      
+      # ШАГ 3: И ТОЛЬКО ТЕПЕРЬ скачиваем наш .exe файл. Он больше не будет удален.
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: my-cool-app-windows
 
-      - name: Checkout repository for tagging
-        # Снова скачиваем код, чтобы работать с git
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      # --- НОВЫЙ ШАГ: Создаем или обновляем тег 'latest' для сборок из main ---
-      - name: Update 'latest' tag
-        if: github.ref == 'refs/heads/main' # Выполняем только для ветки main
-        run: |
-          # Удаляем старый тег 'latest' с GitHub, если он есть (|| true чтобы не было ошибки, если его нет)
-          git push origin --delete latest || true
-          # Удаляем старый тег локально
-          git tag -d latest || true
-          # Создаем новый тег 'latest' на последнем коммите
-          git tag latest
-          # Отправляем новый тег на GitHub
-          git push origin latest
-
+      # ШАГ 4: Создаем релиз и загружаем в него файл
       - name: Create or Update Release
         uses: softprops/action-gh-release@v1
         with:
-          # Если это тег v*, используем его. Если это main, используем тег 'latest'.
           tag_name: ${{ github.ref_name == 'main' && 'latest' || github.ref_name }}
-          # Аналогично для названия релиза
           name: ${{ github.ref_name == 'main' && 'Latest Build' || format('Release {0}', github.ref_name) }}
           body: ${{ github.ref_name == 'main' && 'Автоматическая сборка из последнего коммита в main.' || 'Версионный релиз.'}}
-          # Помечаем как пре-релиз, если это сборка из main
           prerelease: ${{ github.ref_name == 'main' }}
-          # Перезаписывать релиз, если он уже существует (важно для 'latest')
-          make_latest: ${{ github.ref_name == 'main' }}
+          # ИСПРАВЛЕНИЕ: 'make_latest' заменен на 'latest' для лучшей совместимости
+          latest: ${{ github.ref_name == 'main' }}
           files: |
             MyCoolApp.exe
         env:

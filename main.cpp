@@ -1,7 +1,11 @@
 #include <iostream>
 
 int main() {
-    std::cout << "Hello from GitHub Actions!" << std::endl;
-    std::cout << "This is a C++ project compiled on Windows Server 2022." << std::endl;
+    for(int i = 1; i <= 1; i++) {
+        for(int j = 1; j <= 1; j++) {
+            std::cout << i * j << "\t";        
+        }
+        std::cout << std::endl
+    }
     return 0;
 }
